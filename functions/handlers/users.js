@@ -1,6 +1,7 @@
-const { admin, db } =  require('../util/admin');
 const firebase = require('firebase');
 const config = require('../util/config');
+const { admin, db } =  require('../util/admin');
+const { uuid } = require('uuidv4');
 
 firebase.initializeApp(config);
 
@@ -91,6 +92,25 @@ exports.login = (req, res) => {
     });
 };
 
+exports.addUserDetails = (req, res) => {
+  // if (req.body.bio.trim() === '') {
+  //     return res.status(400).json({ body: 'Bio must not be empty' });
+  // }
+
+  const userDetails = {
+      bio: req.body.bio,
+      website: req.body.website,
+      location: req.body.location
+  };
+
+  db.doc(`users/${req.user.handle}`).update(userDetails)
+  .then(doc => {return res.json({ message: 'Details added successfully'})})
+  .catch(err => {
+      console.error(err);
+      res.status(500).json({ error: err.code });
+  });
+};
+
 exports.uploadImage = (req, res) => {
     const BusBoy = require("busboy");
     const path = require("path");
@@ -98,7 +118,7 @@ exports.uploadImage = (req, res) => {
     const fs = require("fs");
   
     const busboy = new BusBoy({ headers: req.headers });
-  
+
     let imageToBeUploaded = {};
     let imageFileName;
     // String for image token
@@ -121,47 +141,30 @@ exports.uploadImage = (req, res) => {
     });
     busboy.on("finish", () => {
       admin
-        .storage()
-        .bucket()
-        .upload(imageToBeUploaded.filepath, {
-          resumable: false,
+      .storage()
+      .bucket()
+      .upload(imageToBeUploaded.filepath, {
+        resumable: false,
+        metadata: {
           metadata: {
-            metadata: {
-              contentType: imageToBeUploaded.mimetype,
-              //Generate token to be appended to imageUrl
-              firebaseStorageDownloadTokens: generatedToken,
-            },
+            contentType: imageToBeUploaded.mimetype,
+            //Generate token to be appended to imageUrl
+            firebaseStorageDownloadTokens: generatedToken,
           },
-        })
-        .then(() => {
-          // Append token to url
-          const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${config.storageBucket}/o/${imageFileName}?alt=media&token=${generatedToken}`;
-          return db.doc(`/users/${req.user.handle}`).update({ imageUrl });
-        })
-        .then(() => {
-          return res.json({ message: "image uploaded successfully" });
-        })
-        .catch((err) => {
-          console.error(err);
-          return res.status(500).json({ error: "something went wrong" });
-        });
-    });
-    busboy.end(req.rawBody);
-  };
-  
-  exports.markNotificationsRead = (req, res) => {
-    let batch = db.batch();
-    req.body.forEach((notificationId) => {
-      const notification = db.doc(`/notifications/${notificationId}`);
-      batch.update(notification, { read: true });
-    });
-    batch
-      .commit()
+        },
+      })
       .then(() => {
-        return res.json({ message: "Notifications marked read" });
+        // Append token to url
+        const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${config.storageBucket}/o/${imageFileName}?alt=media&token=${generatedToken}`;
+        return db.doc(`/users/${req.user.handle}`).update({ imageUrl });
+      })
+      .then(() => {
+        return res.json({ message: "image uploaded successfully" });
       })
       .catch((err) => {
         console.error(err);
-        return res.status(500).json({ error: err.code });
+        return res.status(500).json({ error: "something went wrong" });
       });
-  };
+  });
+  busboy.end(req.rawBody);
+};
