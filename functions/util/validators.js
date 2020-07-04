@@ -17,7 +17,6 @@ exports.validateSignupData = (data) => {
     if(isEmpty(newUser.password)) errors.password = 'Password must not be empty';
     if(newUser.password !== newUser.confirmPassword) errors.confirmPassword = 'Passwords must match';
     if(isEmpty(newUser.handle)) errors.handle = 'Handle must not be empty';
-    if(Object.keys(errors).length > 0) return res.status(400).json(errors);
     
     return {
       errors,
