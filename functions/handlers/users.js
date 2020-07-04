@@ -8,7 +8,6 @@ const {
   reduceUserDetails,
 } = require("../util/validators");
 
-
 firebase.initializeApp(config);
 
 exports.signup = (req, res) => {
@@ -60,12 +59,8 @@ exports.login = (req, res) => {
         email: req.body.email,
         password: req.body.password
     };
-
-    let errors = {};
-    if(isEmpty(user.email)) errors.email = 'Email must not me empty';
-    else if(!isEmail(user.email)) errors.email = 'Email must be a valid email';
-    if(isEmpty(user.password)) errors.password = 'Password must not me empty';
-    if(Object.keys(errors).length > 0) return res.status(400).json(errors);
+    const { valid, errors } = validateLoginData(user);
+    if (!valid) return res.status(400).json(errors);
 
     firebase.auth().signInWithEmailAndPassword(user.email, user.password)
     .then(data => data.user.getIdToken())
@@ -80,7 +75,7 @@ exports.login = (req, res) => {
 };
 
 exports.addUserDetails = (req, res) => {
-  let userDetails = reduceUserDetails(req.body);
+  const userDetails = reduceUserDetails(req.body);
 
   db.doc(`users/${req.user.handle}`).update(userDetails)
   .then(doc => {return res.json({ message: 'Details added successfully'})})
